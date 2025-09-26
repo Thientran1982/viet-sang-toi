@@ -1,0 +1,96 @@
+import { Heart, MapPin, Bed, Bath, Square } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+
+interface PropertyCardProps {
+  image: string
+  title: string
+  location: string
+  price: string
+  beds: number
+  baths: number
+  area: number
+  type: string
+  featured?: boolean
+}
+
+export function PropertyCard({ 
+  image, 
+  title, 
+  location, 
+  price, 
+  beds, 
+  baths, 
+  area, 
+  type,
+  featured = false 
+}: PropertyCardProps) {
+  return (
+    <div className="property-card rounded-2xl overflow-hidden group">
+      {/* Image */}
+      <div className="relative">
+        <img 
+          src={image} 
+          alt={title}
+          className="w-full h-48 object-cover group-hover:scale-105 transition-smooth"
+        />
+        <div className="absolute top-4 left-4">
+          {featured && (
+            <Badge className="bg-accent text-accent-foreground font-semibold">
+              Nổi bật
+            </Badge>
+          )}
+        </div>
+        <Button 
+          variant="ghost" 
+          size="icon"
+          className="absolute top-4 right-4 h-8 w-8 bg-white/90 hover:bg-white text-gray-600 hover:text-red-500"
+        >
+          <Heart className="h-4 w-4" />
+        </Button>
+      </div>
+
+      {/* Content */}
+      <div className="p-6">
+        <div className="flex items-center justify-between mb-2">
+          <Badge variant="secondary" className="text-xs">
+            {type}
+          </Badge>
+          <div className="text-2xl font-bold text-primary">
+            {price}
+          </div>
+        </div>
+
+        <h3 className="font-semibold text-lg text-foreground mb-2 line-clamp-2">
+          {title}
+        </h3>
+
+        <div className="flex items-center text-muted-foreground mb-4">
+          <MapPin className="h-4 w-4 mr-1" />
+          <span className="text-sm">{location}</span>
+        </div>
+
+        {/* Property Stats */}
+        <div className="flex items-center space-x-4 text-sm text-muted-foreground">
+          <div className="flex items-center">
+            <Bed className="h-4 w-4 mr-1" />
+            <span>{beds} PN</span>
+          </div>
+          <div className="flex items-center">
+            <Bath className="h-4 w-4 mr-1" />
+            <span>{baths} WC</span>
+          </div>
+          <div className="flex items-center">
+            <Square className="h-4 w-4 mr-1" />
+            <span>{area}m²</span>
+          </div>
+        </div>
+
+        {/* Action Button */}
+        <Button className="w-full mt-4 bg-primary hover:bg-primary-hover text-white">
+          Xem chi tiết
+        </Button>
+      </div>
+    </div>
+  )
+}
