@@ -1,30 +1,42 @@
-import { Heart, MapPin, Bed, Bath, Square } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { Heart, MapPin, Bed, Bath, Square, Eye } from "lucide-react"
+import { useNavigate } from "react-router-dom"
 
 interface PropertyCardProps {
-  image: string
-  title: string
-  location: string
-  price: string
-  beds: number
-  baths: number
-  area: number
-  type: string
-  featured?: boolean
+  id: string;
+  image: string;
+  title: string;
+  location: string;
+  price: number;
+  beds: number;
+  baths: number;
+  area: number;
+  type: string;
+  featured?: boolean;
 }
 
-export function PropertyCard({ 
-  image, 
-  title, 
-  location, 
-  price, 
-  beds, 
-  baths, 
-  area, 
+export function PropertyCard({
+  id,
+  image,
+  title,
+  location,
+  price,
+  beds,
+  baths,
+  area,
   type,
-  featured = false 
+  featured = false
 }: PropertyCardProps) {
+  const navigate = useNavigate();
+  
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat('vi-VN', {
+      style: 'currency',
+      currency: 'VND'
+    }).format(price);
+  };
+
   return (
     <div className="property-card rounded-2xl overflow-hidden group">
       {/* Image */}
@@ -57,7 +69,7 @@ export function PropertyCard({
             {type}
           </Badge>
           <div className="text-2xl font-bold text-primary">
-            {price}
+            {formatPrice(price)}
           </div>
         </div>
 
@@ -87,7 +99,11 @@ export function PropertyCard({
         </div>
 
         {/* Action Button */}
-        <Button className="w-full mt-4 bg-primary hover:bg-primary-hover text-white">
+        <Button 
+          className="w-full mt-4 btn-gradient"
+          onClick={() => navigate(`/property/${id}`)}
+        >
+          <Eye className="h-4 w-4 mr-2" />
           Xem chi tiết
         </Button>
       </div>

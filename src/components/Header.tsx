@@ -1,13 +1,24 @@
-import { Building2, Heart, Menu, Search, User } from "lucide-react"
+import { Building2, Heart, Menu, Search, User, Plus, LogOut } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ThemeToggle } from "@/components/ThemeToggle"
+import { useAuth } from "@/hooks/useAuth"
+import { useNavigate } from "react-router-dom"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 
 export function Header() {
+  const { user, signOut } = useAuth();
+  const navigate = useNavigate();
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/');
+  };
+
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/70">
       <div className="container flex h-16 items-center justify-between px-4">
         {/* Logo */}
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-2 cursor-pointer" onClick={() => navigate('/')}>
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-primary">
             <Building2 className="h-6 w-6 text-white" />
           </div>
@@ -19,15 +30,24 @@ export function Header() {
 
         {/* Navigation - Desktop */}
         <nav className="hidden md:flex items-center space-x-6">
-          <a href="#" className="text-sm font-medium text-foreground hover:text-primary transition-smooth">
+          <button 
+            onClick={() => navigate('/')}
+            className="text-sm font-medium text-foreground hover:text-primary transition-smooth"
+          >
             Trang chủ
-          </a>
-          <a href="#" className="text-sm font-medium text-muted-foreground hover:text-primary transition-smooth">
+          </button>
+          <button 
+            onClick={() => navigate('/properties')}
+            className="text-sm font-medium text-muted-foreground hover:text-primary transition-smooth"
+          >
             Mua bán
-          </a>
-          <a href="#" className="text-sm font-medium text-muted-foreground hover:text-primary transition-smooth">
+          </button>
+          <button 
+            onClick={() => navigate('/properties')}
+            className="text-sm font-medium text-muted-foreground hover:text-primary transition-smooth"
+          >
             Cho thuê
-          </a>
+          </button>
           <a href="#" className="text-sm font-medium text-muted-foreground hover:text-primary transition-smooth">
             Tin tức
           </a>
@@ -38,16 +58,69 @@ export function Header() {
 
         {/* Actions */}
         <div className="flex items-center space-x-2">
-          <Button variant="ghost" size="icon" className="h-10 w-10">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="h-10 w-10"
+            onClick={() => navigate('/properties')}
+          >
             <Search className="h-5 w-5" />
           </Button>
-          <Button variant="ghost" size="icon" className="h-10 w-10">
-            <Heart className="h-5 w-5" />
-          </Button>
+          
+          {user ? (
+            <>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-10 w-10"
+                onClick={() => navigate('/favorites')}
+              >
+                <Heart className="h-5 w-5" />
+              </Button>
+              
+              <Button 
+                onClick={() => navigate('/add-property')}
+                className="hidden md:flex btn-gradient"
+                size="sm"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Đăng tin
+              </Button>
+
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-10 w-10">
+                    <User className="h-5 w-5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => navigate('/profile')}>
+                    Hồ sơ
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate('/favorites')}>
+                    Yêu thích
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate('/my-properties')}>
+                    Tin đã đăng
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleSignOut}>
+                    <LogOut className="h-4 w-4 mr-2" />
+                    Đăng xuất
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </>
+          ) : (
+            <Button 
+              onClick={() => navigate('/auth')}
+              className="btn-gradient"
+            >
+              Đăng nhập
+            </Button>
+          )}
+          
           <ThemeToggle />
-          <Button variant="ghost" size="icon" className="h-10 w-10">
-            <User className="h-5 w-5" />
-          </Button>
+          
           <Button variant="ghost" size="icon" className="h-10 w-10 md:hidden">
             <Menu className="h-5 w-5" />
           </Button>
