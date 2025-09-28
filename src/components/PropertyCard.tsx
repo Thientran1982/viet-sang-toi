@@ -2,6 +2,11 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Heart, MapPin, Bed, Bath, Square, Eye } from "lucide-react"
 import { useNavigate } from "react-router-dom"
+import { useAuth } from "@/hooks/useAuth"
+import { supabase } from "@/integrations/supabase/client"
+import { useToast } from "@/hooks/use-toast"
+import { useState, useEffect } from "react"
+import { getVietnamesePropertyType, formatPrice } from "@/utils/propertyHelpers"
 
 interface PropertyCardProps {
   id: string;
@@ -29,13 +34,84 @@ export function PropertyCard({
   featured = false
 }: PropertyCardProps) {
   const navigate = useNavigate();
-  
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('vi-VN', {
-      style: 'currency',
-      currency: 'VND'
-    }).format(price);
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [isToggling, setIsToggling] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      checkIfFavorite();
+    }
+  }, [user, id]);
+
+  const checkIfFavorite = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('favorites')
+        .select('id')
+        .eq('user_id', user?.id)
+        .eq('property_id', id)
+        .maybeSingle();
+
+      if (error) throw error;
+      setIsFavorite(!!data);
+    } catch (error) {
+      console.error('Error checking favorite status:', error);
+    }
   };
+
+  const toggleFavorite = async () => {
+    if (!user) {
+      toast({
+        title: 'Cần đăng nhập',
+        description: 'Vui lòng đăng nhập để lưu bất động sản yêu thích',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsToggling(true);
+    try {
+      if (isFavorite) {
+        const { error } = await supabase
+          .from('favorites')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('property_id', id);
+
+        if (error) throw error;
+        setIsFavorite(false);
+        toast({
+          title: 'Thành công',
+          description: 'Đã xóa khỏi danh sách yêu thích',
+        });
+      } else {
+        const { error } = await supabase
+          .from('favorites')
+          .insert({
+            user_id: user.id,
+            property_id: id,
+          });
+
+        if (error) throw error;
+        setIsFavorite(true);
+        toast({
+          title: 'Thành công',
+          description: 'Đã thêm vào danh sách yêu thích',
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: 'Lỗi',
+        description: 'Không thể cập nhật danh sách yêu thích',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsToggling(false);
+    }
+  };
+  
 
   return (
     <div className="property-card rounded-2xl overflow-hidden group">
@@ -56,9 +132,15 @@ export function PropertyCard({
         <Button 
           variant="ghost" 
           size="icon"
-          className="absolute top-4 right-4 h-8 w-8 bg-white/90 hover:bg-white text-gray-600 hover:text-red-500"
+          className={`absolute top-4 right-4 h-8 w-8 ${
+            isFavorite 
+              ? 'bg-red-500/90 hover:bg-red-600/90 text-white' 
+              : 'bg-white/90 hover:bg-white text-gray-600 hover:text-red-500'
+          }`}
+          onClick={toggleFavorite}
+          disabled={isToggling}
         >
-          <Heart className="h-4 w-4" />
+          <Heart className={`h-4 w-4 ${isFavorite ? 'fill-current' : ''}`} />
         </Button>
       </div>
 
@@ -66,7 +148,7 @@ export function PropertyCard({
       <div className="p-6">
         <div className="flex items-center justify-between mb-2">
           <Badge variant="secondary" className="text-xs">
-            {type}
+            {getVietnamesePropertyType(type)}
           </Badge>
           <div className="text-2xl font-bold text-primary">
             {formatPrice(price)}

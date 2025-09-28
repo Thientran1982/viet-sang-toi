@@ -1,61 +1,57 @@
 import { PropertyCard } from "@/components/PropertyCard"
-import apartmentHcm from "@/assets/apartment-hcm.jpg"
-import townhouseHanoi from "@/assets/townhouse-hanoi.jpg"
-import penthouseInterior from "@/assets/penthouse-interior.jpg"
-import heroVilla from "@/assets/hero-villa.jpg"
+import { useEffect, useState } from "react"
+import { supabase } from "@/integrations/supabase/client"
+import { useToast } from "@/hooks/use-toast"
+import { useNavigate } from "react-router-dom"
+import { Button } from "@/components/ui/button"
 
-const featuredProperties = [
-  {
-    id: "1",
-    image: heroVilla,
-    title: "Biệt thự sang trọng Garden Villa",
-    location: "Quận 2, TP.HCM",
-    price: 45000000000,
-    beds: 5,
-    baths: 4,
-    area: 350,
-    type: "Biệt thự",
-    featured: true
-  },
-  {
-    id: "2",
-    image: apartmentHcm,
-    title: "Chung cư cao cấp Landmark 81",
-    location: "Quận 1, TP.HCM", 
-    price: 8500000000,
-    beds: 3,
-    baths: 2,
-    area: 120,
-    type: "Chung cư",
-    featured: true
-  },
-  {
-    id: "3",
-    image: townhouseHanoi,
-    title: "Nhà phố hiện đại French Quarter",
-    location: "Ba Đình, Hà Nội",
-    price: 25000000000,
-    beds: 4,
-    baths: 3,
-    area: 200,
-    type: "Nhà phố",
-    featured: false
-  },
-  {
-    id: "4",
-    image: penthouseInterior,
-    title: "Penthouse view sông Sài Gòn",
-    location: "Quận 4, TP.HCM",
-    price: 15000000000,
-    beds: 3,
-    baths: 3,
-    area: 180,
-    type: "Penthouse",
-    featured: true
-  }
-]
+interface Property {
+  id: string;
+  title: string;
+  location: string;
+  price: number;
+  bedrooms: number;
+  bathrooms: number;
+  area: number;
+  property_type: string;
+  images: string[];
+  featured: boolean;
+}
+
 
 export function FeaturedProperties() {
+  const [featuredProperties, setFeaturedProperties] = useState<Property[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    fetchFeaturedProperties();
+  }, []);
+
+  const fetchFeaturedProperties = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('properties')
+        .select('*')
+        .eq('featured', true)
+        .eq('status', 'available')
+        .order('created_at', { ascending: false })
+        .limit(8);
+
+      if (error) throw error;
+
+      setFeaturedProperties(data || []);
+    } catch (error: any) {
+      toast({
+        title: 'Lỗi',
+        description: 'Không thể tải danh sách bất động sản nổi bật',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
   return (
     <section className="py-16 bg-muted/30">
       <div className="container px-4">
@@ -69,27 +65,48 @@ export function FeaturedProperties() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {featuredProperties.map((property) => (
-            <PropertyCard 
-              key={property.id}
-              id={property.id}
-              image={property.image}
-              title={property.title}
-              location={property.location}
-              price={property.price}
-              beds={property.beds}
-              baths={property.baths}
-              area={property.area}
-              type={property.type}
-              featured={property.featured}
-            />
-          ))}
+          {loading ? (
+            // Loading skeleton
+            Array.from({ length: 4 }).map((_, index) => (
+              <div key={index} className="animate-pulse">
+                <div className="bg-muted rounded-2xl h-48 mb-4"></div>
+                <div className="space-y-2">
+                  <div className="h-4 bg-muted rounded w-3/4"></div>
+                  <div className="h-4 bg-muted rounded w-1/2"></div>
+                  <div className="h-6 bg-muted rounded w-full"></div>
+                </div>
+              </div>
+            ))
+          ) : featuredProperties.length > 0 ? (
+            featuredProperties.map((property) => (
+              <PropertyCard 
+                key={property.id}
+                id={property.id}
+                image={property.images?.[0] || '/placeholder.svg'}
+                title={property.title}
+                location={property.location}
+                price={property.price}
+                beds={property.bedrooms}
+                baths={property.bathrooms}
+                area={property.area}
+                type={property.property_type}
+                featured={property.featured}
+              />
+            ))
+          ) : (
+            <div className="col-span-full text-center py-8">
+              <p className="text-muted-foreground">Không có bất động sản nổi bật nào</p>
+            </div>
+          )}
         </div>
 
         <div className="text-center mt-8">
-          <button className="btn-gradient px-8 py-3 rounded-xl text-white font-semibold transition-smooth hover:shadow-lg">
+          <Button 
+            className="btn-gradient px-8 py-3 rounded-xl text-white font-semibold transition-smooth hover:shadow-lg"
+            onClick={() => navigate('/properties')}
+          >
             Xem tất cả bất động sản
-          </button>
+          </Button>
         </div>
       </div>
     </section>
