@@ -6,11 +6,11 @@ import heroVilla from "@/assets/hero-villa.jpg"
 
 const featuredProperties = [
   {
-    id: 1,
+    id: "1",
     image: heroVilla,
     title: "Biệt thự sang trọng Garden Villa",
     location: "Quận 2, TP.HCM",
-    price: "45 tỷ",
+    price: 45000000000,
     beds: 5,
     baths: 4,
     area: 350,
@@ -18,11 +18,11 @@ const featuredProperties = [
     featured: true
   },
   {
-    id: 2,
+    id: "2",
     image: apartmentHcm,
     title: "Chung cư cao cấp Landmark 81",
     location: "Quận 1, TP.HCM", 
-    price: "8.5 tỷ",
+    price: 8500000000,
     beds: 3,
     baths: 2,
     area: 120,
@@ -30,11 +30,11 @@ const featuredProperties = [
     featured: true
   },
   {
-    id: 3,
+    id: "3",
     image: townhouseHanoi,
     title: "Nhà phố hiện đại French Quarter",
     location: "Ba Đình, Hà Nội",
-    price: "25 tỷ",
+    price: 25000000000,
     beds: 4,
     baths: 3,
     area: 200,
@@ -42,11 +42,11 @@ const featuredProperties = [
     featured: false
   },
   {
-    id: 4,
+    id: "4",
     image: penthouseInterior,
     title: "Penthouse view sông Sài Gòn",
     location: "Quận 4, TP.HCM",
-    price: "15 tỷ",
+    price: 15000000000,
     beds: 3,
     baths: 3,
     area: 180,
@@ -72,6 +72,7 @@ export function FeaturedProperties() {
           {featuredProperties.map((property) => (
             <PropertyCard 
               key={property.id}
+              id={property.id}
               image={property.image}
               title={property.title}
               location={property.location}
