@@ -1,1 +1,10 @@
 project_id = "mcopjnrsysvszczixskd"
+
+[functions.ai-search]
+verify_jwt = false
+
+[functions.ai-recommendations]  
+verify_jwt = true
+
+[functions.ai-property-assistant]
+verify_jwt = false

@@ -15,6 +15,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ImageUpload } from "@/components/ImageUpload";
+import { AIPropertyAssistant } from "@/components/AIPropertyAssistant";
 
 const propertySchema = z.object({
   title: z.string().min(10, "Tiêu đề phải có ít nhất 10 ký tự").max(200, "Tiêu đề không được vượt quá 200 ký tự"),
@@ -39,6 +40,7 @@ const PropertyForm = () => {
   const [loading, setLoading] = useState(false);
   const [selectedAmenities, setSelectedAmenities] = useState<string[]>([]);
   const [propertyImages, setPropertyImages] = useState<string[]>([]);
+  const [showAIAssistant, setShowAIAssistant] = useState(false);
 
   const form = useForm<PropertyFormData>({
     resolver: zodResolver(propertySchema),
@@ -77,6 +79,12 @@ const PropertyForm = () => {
       setSelectedAmenities(prev => [...prev, amenity]);
     } else {
       setSelectedAmenities(prev => prev.filter(a => a !== amenity));
+    }
+  };
+
+  const handleAIResult = (type: string, result: string) => {
+    if (type === "generate_description") {
+      form.setValue("description", result);
     }
   };
 
@@ -180,6 +188,35 @@ const PropertyForm = () => {
           <CardContent className="p-6">
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                {/* AI Assistant */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-semibold">Trợ lý AI</h3>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setShowAIAssistant(!showAIAssistant)}
+                    >
+                      {showAIAssistant ? "Ẩn trợ lý AI" : "Hiện trợ lý AI"}
+                    </Button>
+                  </div>
+                  
+                  {showAIAssistant && (
+                    <AIPropertyAssistant
+                      propertyData={{
+                        title: form.watch("title"),
+                        property_type: form.watch("property_type"),
+                        location: form.watch("location"),
+                        price: form.watch("price"),
+                        area: form.watch("area"),
+                        bedrooms: form.watch("bedrooms"),
+                        bathrooms: form.watch("bathrooms"),
+                        amenities: selectedAmenities,
+                      }}
+                      onResultGenerated={handleAIResult}
+                    />
+                  )}
+                </div>
                 {/* Basic Information */}
                 <div className="space-y-4">
                   <h3 className="text-lg font-semibold">Thông tin cơ bản</h3>
