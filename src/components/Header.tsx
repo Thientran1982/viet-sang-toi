@@ -25,7 +25,7 @@ export function Header() {
           </div>
           <div>
             <h1 className="text-xl font-bold text-foreground">SGS LAND</h1>
-            <p className="text-xs text-muted-foreground">Bất động sản</p>
+            <p className="text-xs text-muted-foreground">Nền tảng AI Bất động sản </p>
           </div>
         </div>
 
