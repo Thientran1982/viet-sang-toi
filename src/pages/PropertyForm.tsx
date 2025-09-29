@@ -14,6 +14,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Checkbox } from "@/components/ui/checkbox";
 import { ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { ImageUpload } from "@/components/ImageUpload";
 
 const propertySchema = z.object({
   title: z.string().min(10, "Tiêu đề phải có ít nhất 10 ký tự").max(200, "Tiêu đề không được vượt quá 200 ký tự"),
@@ -37,6 +38,7 @@ const PropertyForm = () => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [selectedAmenities, setSelectedAmenities] = useState<string[]>([]);
+  const [propertyImages, setPropertyImages] = useState<string[]>([]);
 
   const form = useForm<PropertyFormData>({
     resolver: zodResolver(propertySchema),
@@ -107,7 +109,7 @@ const PropertyForm = () => {
           email: data.contact_email?.trim() || null,
         },
         created_by: user.id,
-        images: [], // Will be implemented with image upload later
+        images: propertyImages,
         featured: false,
         status: 'available'
       };
@@ -343,6 +345,16 @@ const PropertyForm = () => {
                       )}
                     />
                   </div>
+                </div>
+
+                {/* Property Images */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold">Hình ảnh bất động sản</h3>
+                  <ImageUpload
+                    onImagesChange={setPropertyImages}
+                    maxImages={8}
+                    existingImages={propertyImages}
+                  />
                 </div>
 
                 {/* Amenities */}

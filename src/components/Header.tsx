@@ -1,13 +1,15 @@
-import { Building2, Heart, Menu, Search, User, Plus, LogOut } from "lucide-react"
+import { Building2, Heart, Menu, Search, User, Plus, LogOut, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ThemeToggle } from "@/components/ThemeToggle"
 import { useAuth } from "@/hooks/useAuth"
 import { useNavigate } from "react-router-dom"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { useState } from "react"
 
 export function Header() {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const handleSignOut = async () => {
     await signOut();
@@ -121,11 +123,95 @@ export function Header() {
           
           <ThemeToggle />
           
-          <Button variant="ghost" size="icon" className="h-10 w-10 md:hidden">
-            <Menu className="h-5 w-5" />
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="h-10 w-10 md:hidden"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          >
+            {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </Button>
         </div>
       </div>
+
+      {/* Mobile Menu */}
+      {mobileMenuOpen && (
+        <div className="md:hidden border-t bg-background/95 backdrop-blur">
+          <div className="container px-4 py-4 space-y-4">
+            <button 
+              onClick={() => {
+                navigate('/');
+                setMobileMenuOpen(false);
+              }}
+              className="block w-full text-left py-2 text-sm font-medium text-foreground hover:text-primary"
+            >
+              Trang chủ
+            </button>
+            <button 
+              onClick={() => {
+                navigate('/properties');
+                setMobileMenuOpen(false);
+              }}
+              className="block w-full text-left py-2 text-sm font-medium text-muted-foreground hover:text-primary"
+            >
+              Mua bán
+            </button>
+            <button 
+              onClick={() => {
+                navigate('/properties');
+                setMobileMenuOpen(false);
+              }}
+              className="block w-full text-left py-2 text-sm font-medium text-muted-foreground hover:text-primary"
+            >
+              Cho thuê
+            </button>
+            
+            {user && (
+              <>
+                <Button 
+                  onClick={() => {
+                    navigate('/add-property');
+                    setMobileMenuOpen(false);
+                  }}
+                  className="w-full btn-gradient mt-4"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Đăng tin
+                </Button>
+                <div className="border-t pt-4 space-y-2">
+                  <button 
+                    onClick={() => {
+                      navigate('/profile');
+                      setMobileMenuOpen(false);
+                    }}
+                    className="block w-full text-left py-2 text-sm font-medium text-muted-foreground hover:text-primary"
+                  >
+                    Hồ sơ
+                  </button>
+                  <button 
+                    onClick={() => {
+                      navigate('/favorites');
+                      setMobileMenuOpen(false);
+                    }}
+                    className="block w-full text-left py-2 text-sm font-medium text-muted-foreground hover:text-primary"
+                  >
+                    Yêu thích
+                  </button>
+                  <button 
+                    onClick={() => {
+                      navigate('/my-properties');
+                      setMobileMenuOpen(false);
+                    }}
+                    className="block w-full text-left py-2 text-sm font-medium text-muted-foreground hover:text-primary"
+                  >
+                    Tin đã đăng
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </header>
   )
 }

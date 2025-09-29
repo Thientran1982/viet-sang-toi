@@ -100,17 +100,59 @@ const PropertyList = () => {
     }
   };
 
-  const handleSearch = () => {
-    if (searchTerm.trim()) {
-      // Search implementation - could be enhanced with full-text search
-      const filtered = properties.filter(property =>
-        property.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        property.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        property.description?.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-      setProperties(filtered);
-    } else {
-      fetchProperties();
+  const handleSearch = async () => {
+    try {
+      setLoading(true);
+      let query = supabase
+        .from('properties')
+        .select('*')
+        .eq('status', 'available');
+
+      // Apply filters first
+      if (propertyType) {
+        query = query.eq('property_type', propertyType);
+      }
+      if (minPrice) {
+        query = query.gte('price', parseInt(minPrice));
+      }
+      if (maxPrice) {
+        query = query.lte('price', parseInt(maxPrice));
+      }
+      if (bedrooms) {
+        query = query.eq('bedrooms', parseInt(bedrooms));
+      }
+      if (bathrooms) {
+        query = query.eq('bathrooms', parseInt(bathrooms));
+      }
+
+      // Apply search term if provided
+      if (searchTerm.trim()) {
+        query = query.or(`title.ilike.%${searchTerm}%,location.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`);
+      }
+
+      // Apply sorting
+      if (sortBy === 'price_low') {
+        query = query.order('price', { ascending: true });
+      } else if (sortBy === 'price_high') {
+        query = query.order('price', { ascending: false });
+      } else if (sortBy === 'newest') {
+        query = query.order('created_at', { ascending: false });
+      } else {
+        query = query.order('created_at', { ascending: false });
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+
+      setProperties(data || []);
+    } catch (error: any) {
+      toast({
+        title: "Lỗi",
+        description: "Không thể tìm kiếm bất động sản",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
