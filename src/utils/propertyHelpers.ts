@@ -17,6 +17,10 @@ export const getVietnamesePropertyType = (type: string): string => {
   return PROPERTY_TYPE_MAP[type] || type;
 };
 
+export const translatePropertyType = (type: string): string => {
+  return PROPERTY_TYPE_MAP[type] || type;
+};
+
 export const getVietnameseStatus = (status: string): string => {
   return PROPERTY_STATUS_MAP[status] || status;
 };

@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import PropertyMap from "@/components/PropertyMap";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
@@ -316,6 +317,15 @@ const PropertyDetail = () => {
                   </div>
                 </div>
               )}
+
+              {/* Location Map */}
+              <div>
+                <h3 className="text-xl font-semibold mb-3">Vị trí</h3>
+                <PropertyMap 
+                  properties={[property]}
+                  zoom={14}
+                />
+              </div>
             </div>
           </div>
 

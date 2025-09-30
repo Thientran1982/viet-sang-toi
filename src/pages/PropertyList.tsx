@@ -1,11 +1,14 @@
 import { useState, useEffect } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { PropertyCard } from "@/components/PropertyCard";
+import PropertyMap from "@/components/PropertyMap";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Grid, List } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
+import { Search, Grid, List, Map, GitCompare } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface Property {
@@ -28,9 +31,11 @@ const PropertyList = () => {
   const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [viewMode, setViewMode] = useState<"grid" | "list" | "map">("grid");
   const [sortBy, setSortBy] = useState("created_at");
+  const [selectedForCompare, setSelectedForCompare] = useState<Set<string>>(new Set());
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const { toast } = useToast();
 
   // Filter states
@@ -166,6 +171,38 @@ const PropertyList = () => {
     fetchProperties();
   };
 
+  const toggleCompareSelection = (propertyId: string) => {
+    setSelectedForCompare(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(propertyId)) {
+        newSet.delete(propertyId);
+      } else {
+        if (newSet.size >= 4) {
+          toast({
+            title: "Giới hạn so sánh",
+            description: "Bạn chỉ có thể so sánh tối đa 4 bất động sản",
+            variant: "destructive",
+          });
+          return prev;
+        }
+        newSet.add(propertyId);
+      }
+      return newSet;
+    });
+  };
+
+  const handleCompare = () => {
+    if (selectedForCompare.size < 2) {
+      toast({
+        title: "Chọn ít nhất 2 bất động sản",
+        description: "Vui lòng chọn ít nhất 2 bất động sản để so sánh",
+        variant: "destructive",
+      });
+      return;
+    }
+    navigate(`/compare?ids=${Array.from(selectedForCompare).join(',')}`);
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -279,6 +316,12 @@ const PropertyList = () => {
           </div>
 
           <div className="flex items-center gap-2">
+            {selectedForCompare.size > 0 && (
+              <Button onClick={handleCompare} className="btn-gradient">
+                <GitCompare className="mr-2 h-4 w-4" />
+                So sánh ({selectedForCompare.size})
+              </Button>
+            )}
             <Button
               variant={viewMode === "grid" ? "default" : "outline"}
               size="icon"
@@ -293,10 +336,17 @@ const PropertyList = () => {
             >
               <List className="h-4 w-4" />
             </Button>
+            <Button
+              variant={viewMode === "map" ? "default" : "outline"}
+              size="icon"
+              onClick={() => setViewMode("map")}
+            >
+              <Map className="h-4 w-4" />
+            </Button>
           </div>
         </div>
 
-        {/* Property Grid/List */}
+        {/* Property Grid/List/Map */}
         {loading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[...Array(6)].map((_, i) => (
@@ -313,6 +363,11 @@ const PropertyList = () => {
               Không tìm thấy bất động sản nào phù hợp
             </p>
           </div>
+        ) : viewMode === "map" ? (
+          <PropertyMap 
+            properties={properties} 
+            onMarkerClick={(property) => navigate(`/property/${property.id}`)}
+          />
         ) : (
           <div className={`${
             viewMode === "grid" 
@@ -320,19 +375,29 @@ const PropertyList = () => {
               : "space-y-4"
           }`}>
             {properties.map((property) => (
-              <PropertyCard
-                key={property.id}
-                id={property.id}
-                image={property.images[0] || "/placeholder.svg"}
-                title={property.title}
-                location={property.location}
-                price={property.price}
-                beds={property.bedrooms}
-                baths={property.bathrooms}
-                area={property.area}
-                type={property.property_type}
-                featured={property.featured}
-              />
+              <div key={property.id} className="relative">
+                {viewMode === "grid" && (
+                  <div className="absolute top-2 left-2 z-10">
+                    <Checkbox
+                      checked={selectedForCompare.has(property.id)}
+                      onCheckedChange={() => toggleCompareSelection(property.id)}
+                      className="bg-white border-2"
+                    />
+                  </div>
+                )}
+                <PropertyCard
+                  id={property.id}
+                  image={property.images[0] || "/placeholder.svg"}
+                  title={property.title}
+                  location={property.location}
+                  price={property.price}
+                  beds={property.bedrooms}
+                  baths={property.bathrooms}
+                  area={property.area}
+                  type={property.property_type}
+                  featured={property.featured}
+                />
+              </div>
             ))}
           </div>
         )}
