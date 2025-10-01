@@ -1,3 +1,4 @@
+// Footer component with brand and contact information
 import { Building2, Facebook, Instagram, Twitter, Youtube } from "lucide-react"
 
 export function Footer() {
