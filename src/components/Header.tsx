@@ -1,7 +1,8 @@
-import { Building2, Heart, Menu, Search, User, Plus, LogOut, X } from "lucide-react";
+import { Building2, Heart, Menu, Search, User, Plus, LogOut, X, LayoutDashboard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useAuth } from "@/hooks/useAuth";
+import { useAdminRole } from "@/hooks/useAdminRole";
 import { useNavigate } from "react-router-dom";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useState } from "react";
@@ -10,6 +11,7 @@ export function Header() {
     user,
     signOut
   } = useAuth();
+  const { isAdmin } = useAdminRole();
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const handleSignOut = async () => {
@@ -80,6 +82,12 @@ export function Header() {
                   <DropdownMenuItem onClick={() => navigate('/my-properties')}>
                     Tin đã đăng
                   </DropdownMenuItem>
+                  {isAdmin && (
+                    <DropdownMenuItem onClick={() => navigate('/dashboard')}>
+                      <LayoutDashboard className="h-4 w-4 mr-2" />
+                      Dashboard
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuItem onClick={handleSignOut}>
                     <LogOut className="h-4 w-4 mr-2" />
                     Đăng xuất
