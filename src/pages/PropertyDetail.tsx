@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import PropertyMap from "@/components/PropertyMap";
+import ChatBox from "@/components/ChatBox";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
@@ -411,6 +412,11 @@ const PropertyDetail = () => {
           </div>
         </div>
       </div>
+      
+      {/* Chat Box */}
+      {property.created_by && (
+        <ChatBox propertyId={property.id} sellerId={property.created_by} />
+      )}
     </div>
   );
 };
