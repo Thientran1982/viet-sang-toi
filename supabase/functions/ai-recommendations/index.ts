@@ -76,50 +76,85 @@ Avoid recommending properties they've already favorited.
 Return ONLY a JSON array of property IDs in order of recommendation strength.
 Example: ["id1", "id2", "id3", "id4", "id5", "id6", "id7", "id8"]`;
 
-    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: "Generate personalized property recommendations for this user." }
-        ],
-        temperature: 0.4,
-      }),
-    });
-
-    if (!aiResponse.ok) {
-      throw new Error(`AI Gateway error: ${aiResponse.status}`);
-    }
-
-    const aiResult = await aiResponse.json();
-    const aiContent = aiResult.choices?.[0]?.message?.content;
-
-    if (!aiContent) {
-      throw new Error("No AI response content");
-    }
-
-    console.log("AI Recommendations Response:", aiContent);
-
     // Parse AI response to get property IDs
     let recommendedIds: string[] = [];
+    let usedAI = false;
+    
+    // Try AI recommendations first
     try {
-      const jsonMatch = aiContent.match(/\[.*\]/);
-      if (jsonMatch) {
-        recommendedIds = JSON.parse(jsonMatch[0]);
+      const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-2.5-flash",
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: "Generate personalized property recommendations for this user." }
+          ],
+          temperature: 0.4,
+        }),
+      });
+
+      if (aiResponse.ok) {
+        const aiResult = await aiResponse.json();
+        const aiContent = aiResult.choices?.[0]?.message?.content;
+
+        if (aiContent) {
+          console.log("AI Recommendations Response:", aiContent);
+          const jsonMatch = aiContent.match(/\[.*\]/);
+          if (jsonMatch) {
+            recommendedIds = JSON.parse(jsonMatch[0]);
+            usedAI = true;
+          }
+        }
+      } else {
+        console.log("AI Gateway unavailable, using fallback logic");
       }
-    } catch (parseError) {
-      console.error("Failed to parse AI response:", parseError);
-      // Fallback: return random properties (excluding favorites)
+    } catch (aiError) {
+      console.log("AI request failed, using fallback logic:", aiError);
+    }
+    
+    // Fallback: Smart recommendations based on user preferences
+    if (recommendedIds.length === 0) {
       const favoriteIds = userFavorites.map(f => f.id);
-      recommendedIds = allProperties
+      
+      // Extract patterns from favorites
+      const avgPrice = userFavorites.length > 0 
+        ? userFavorites.reduce((sum, p) => sum + (p.price || 0), 0) / userFavorites.length 
+        : 0;
+      
+      const preferredTypes = new Set(userFavorites.map(p => p.property_type));
+      const preferredLocations = new Set(userFavorites.map(p => p.location));
+      
+      // Score and sort properties
+      const scoredProperties = allProperties
         .filter(p => !favoriteIds.includes(p.id))
-        .slice(0, 8)
-        .map(p => p.id);
+        .map(property => {
+          let score = 0;
+          
+          // Match property type (+3 points)
+          if (preferredTypes.has(property.property_type)) score += 3;
+          
+          // Match location (+2 points)
+          if (preferredLocations.has(property.location)) score += 2;
+          
+          // Price similarity (+1 point if within 30% of average)
+          if (avgPrice > 0) {
+            const priceDiff = Math.abs(property.price - avgPrice) / avgPrice;
+            if (priceDiff < 0.3) score += 1;
+          }
+          
+          // Featured properties (+1 point)
+          if (property.featured) score += 1;
+          
+          return { ...property, score };
+        })
+        .sort((a, b) => b.score - a.score);
+      
+      recommendedIds = scoredProperties.slice(0, 8).map(p => p.id);
     }
 
     // Get the recommended properties in order

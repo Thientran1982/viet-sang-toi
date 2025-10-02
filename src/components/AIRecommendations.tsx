@@ -69,11 +69,19 @@ export function AIRecommendations() {
 
     } catch (error: any) {
       console.error("AI Recommendations error:", error);
+      
+      // Show a more user-friendly error message
+      const errorMessage = error.message?.includes("402") 
+        ? "Dịch vụ AI tạm thời không khả dụng. Đang dùng gợi ý thông minh thay thế."
+        : "Đã xảy ra lỗi khi tải gợi ý bất động sản";
+      
       toast({
-        title: "Không thể tải gợi ý",
-        description: "Đã xảy ra lỗi khi tải gợi ý bất động sản",
-        variant: "destructive",
+        title: "Thông báo",
+        description: errorMessage,
+        variant: error.message?.includes("402") ? "default" : "destructive",
       });
+      
+      // Don't clear recommendations on error, keep showing previous ones
     } finally {
       setLoading(false);
     }
