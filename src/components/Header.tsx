@@ -42,12 +42,15 @@ export function Header() {
           <button onClick={() => navigate('/properties')} className="text-sm font-medium text-muted-foreground hover:text-primary transition-smooth">
             Cho thuê
           </button>
-          <a href="#" className="text-sm font-medium text-muted-foreground hover:text-primary transition-smooth">
+          <button onClick={() => navigate('/news')} className="text-sm font-medium text-muted-foreground hover:text-primary transition-smooth">
             Tin tức
-          </a>
-          <a href="#" className="text-sm font-medium text-muted-foreground hover:text-primary transition-smooth">
+          </button>
+          <button onClick={() => navigate('/agents')} className="text-sm font-medium text-muted-foreground hover:text-primary transition-smooth">
+            Môi giới
+          </button>
+          <button onClick={() => navigate('/contact')} className="text-sm font-medium text-muted-foreground hover:text-primary transition-smooth">
             Liên hệ
-          </a>
+          </button>
         </nav>
 
         {/* Actions */}
@@ -126,6 +129,24 @@ export function Header() {
           setMobileMenuOpen(false);
         }} className="block w-full text-left py-2 text-sm font-medium text-muted-foreground hover:text-primary">
               Cho thuê
+            </button>
+            <button onClick={() => {
+          navigate('/news');
+          setMobileMenuOpen(false);
+        }} className="block w-full text-left py-2 text-sm font-medium text-muted-foreground hover:text-primary">
+              Tin tức
+            </button>
+            <button onClick={() => {
+          navigate('/agents');
+          setMobileMenuOpen(false);
+        }} className="block w-full text-left py-2 text-sm font-medium text-muted-foreground hover:text-primary">
+              Môi giới
+            </button>
+            <button onClick={() => {
+          navigate('/contact');
+          setMobileMenuOpen(false);
+        }} className="block w-full text-left py-2 text-sm font-medium text-muted-foreground hover:text-primary">
+              Liên hệ
             </button>
             
             {user && <>

@@ -15,6 +15,9 @@ import Favorites from "./pages/Favorites";
 import MyProperties from "./pages/MyProperties";
 import PropertyComparison from "./pages/PropertyComparison";
 import Dashboard from "./pages/Dashboard";
+import News from "./pages/News";
+import Contact from "./pages/Contact";
+import Agents from "./pages/Agents";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -38,6 +41,9 @@ const App = () => (
               <Route path="/my-properties" element={<MyProperties />} />
               <Route path="/compare" element={<PropertyComparison />} />
               <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/news" element={<News />} />
+              <Route path="/contact" element={<Contact />} />
+              <Route path="/agents" element={<Agents />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>

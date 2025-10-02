@@ -1,6 +1,9 @@
 import { Building2, Facebook, Instagram, Twitter, Youtube } from "lucide-react"
+import { useNavigate } from "react-router-dom"
 
 export function Footer() {
+  const navigate = useNavigate();
+  
   return (
     <footer className="bg-gray-900 text-gray-300">
       <div className="container px-4 py-12">
@@ -12,7 +15,7 @@ export function Footer() {
                 <Building2 className="h-6 w-6 text-white" />
               </div>
               <div>
-                <h3 className="text-xl font-bold text-white">NhàĐẹp</h3>
+                <h3 className="text-xl font-bold text-white">SGS LAND</h3>
                 <p className="text-xs text-gray-400">Bất động sản</p>
               </div>
             </div>
@@ -39,11 +42,11 @@ export function Footer() {
           <div>
             <h4 className="text-lg font-semibold text-white mb-4">Liên kết nhanh</h4>
             <ul className="space-y-2">
-              <li><a href="#" className="hover:text-primary transition-smooth">Trang chủ</a></li>
-              <li><a href="#" className="hover:text-primary transition-smooth">Mua bán</a></li>
-              <li><a href="#" className="hover:text-primary transition-smooth">Cho thuê</a></li>
-              <li><a href="#" className="hover:text-primary transition-smooth">Tin tức</a></li>
-              <li><a href="#" className="hover:text-primary transition-smooth">Liên hệ</a></li>
+              <li><button onClick={() => navigate('/')} className="hover:text-primary transition-smooth">Trang chủ</button></li>
+              <li><button onClick={() => navigate('/properties')} className="hover:text-primary transition-smooth">Mua bán</button></li>
+              <li><button onClick={() => navigate('/properties')} className="hover:text-primary transition-smooth">Cho thuê</button></li>
+              <li><button onClick={() => navigate('/news')} className="hover:text-primary transition-smooth">Tin tức</button></li>
+              <li><button onClick={() => navigate('/contact')} className="hover:text-primary transition-smooth">Liên hệ</button></li>
             </ul>
           </div>
 
@@ -51,11 +54,11 @@ export function Footer() {
           <div>
             <h4 className="text-lg font-semibold text-white mb-4">Dịch vụ</h4>
             <ul className="space-y-2">
-              <li><a href="#" className="hover:text-primary transition-smooth">Định giá BĐS</a></li>
-              <li><a href="#" className="hover:text-primary transition-smooth">Tư vấn đầu tư</a></li>
-              <li><a href="#" className="hover:text-primary transition-smooth">Hỗ trợ pháp lý</a></li>
-              <li><a href="#" className="hover:text-primary transition-smooth">Môi giới</a></li>
-              <li><a href="#" className="hover:text-primary transition-smooth">Quản lý tài sản</a></li>
+              <li><button onClick={() => navigate('/agents')} className="hover:text-primary transition-smooth">Môi giới</button></li>
+              <li><button onClick={() => navigate('/properties')} className="hover:text-primary transition-smooth">Định giá BĐS</button></li>
+              <li><button onClick={() => navigate('/news')} className="hover:text-primary transition-smooth">Tư vấn đầu tư</button></li>
+              <li><button onClick={() => navigate('/contact')} className="hover:text-primary transition-smooth">Hỗ trợ pháp lý</button></li>
+              <li><button onClick={() => navigate('/contact')} className="hover:text-primary transition-smooth">Quản lý tài sản</button></li>
             </ul>
           </div>
 
@@ -64,20 +67,20 @@ export function Footer() {
             <h4 className="text-lg font-semibold text-white mb-4">Liên hệ</h4>
             <div className="space-y-2">
               <p className="text-gray-400">
-                📍 123 Nguyễn Huệ, Quận 1, TP.HCM
+                📍 122 Nguyễn Văn Linh, Quận 7, TP.HCM
               </p>
               <p className="text-gray-400">
-                📞 (+84) 123 456 789
+                📞 1900 xxxx
               </p>
               <p className="text-gray-400">
-                ✉️ contact@nhadep.vn
+                ✉️ contact@sgsland.com
               </p>
             </div>
           </div>
         </div>
 
         <div className="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
-          <p>&copy; 2024 NhàĐẹp. Tất cả quyền được bảo lưu.</p>
+          <p>&copy; 2025 SGS LAND. Tất cả quyền được bảo lưu.</p>
         </div>
       </div>
     </footer>
