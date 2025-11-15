@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -12,14 +13,24 @@ serve(async (req) => {
   }
 
   try {
-    const { query, location, budget, propertyType } = await req.json();
+    const searchSchema = z.object({
+      query: z.string().min(1).max(500),
+      location: z.string().max(200).optional(),
+      budget: z.number().min(0).max(1000000000000).optional(),
+      propertyType: z.enum(['apartment', 'house', 'villa', 'townhouse', 'land', 'penthouse', 'office', 'shop']).optional(),
+    });
+
+    const body = await req.json();
+    const validationResult = searchSchema.safeParse(body);
     
-    if (!query) {
+    if (!validationResult.success) {
       return new Response(
-        JSON.stringify({ error: "Query is required" }),
+        JSON.stringify({ error: "Invalid input", details: validationResult.error.issues }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    const { query, location, budget, propertyType } = validationResult.data;
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");

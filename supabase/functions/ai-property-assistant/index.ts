@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -11,14 +12,36 @@ serve(async (req) => {
   }
 
   try {
-    const { type, data } = await req.json();
+    const assistantSchema = z.object({
+      type: z.enum(['generate_description', 'price_estimate', 'investment_advice']),
+      data: z.object({
+        title: z.string().max(200).optional(),
+        description: z.string().max(5000).optional(),
+        price: z.number().min(0).max(1000000000000).optional(),
+        location: z.string().max(200).optional(),
+        area: z.number().min(0).max(100000).optional(),
+        bedrooms: z.number().min(0).max(50).optional(),
+        bathrooms: z.number().min(0).max(50).optional(),
+        property_type: z.string().max(50).optional(),
+        amenities: z.array(z.string().max(100)).max(50).optional(),
+        additional_info: z.string().max(1000).optional(),
+        additional_context: z.string().max(1000).optional(),
+        rental_estimate: z.number().min(0).max(1000000000000).optional(),
+        market_context: z.string().max(500).optional(),
+      }),
+    });
+
+    const body = await req.json();
+    const validationResult = assistantSchema.safeParse(body);
     
-    if (!type || !data) {
+    if (!validationResult.success) {
       return new Response(
-        JSON.stringify({ error: "Type and data are required" }),
+        JSON.stringify({ error: "Invalid input", details: validationResult.error.issues }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    const { type, data } = validationResult.data;
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
