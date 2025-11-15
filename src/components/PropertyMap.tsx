@@ -34,6 +34,7 @@ const PropertyMap = ({
   const map = useRef<mapboxgl.Map | null>(null);
   const [mapboxToken, setMapboxToken] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   // Geocoding function to convert location to coordinates
   const geocodeLocation = async (location: string): Promise<[number, number] | null> => {
@@ -58,6 +59,9 @@ const PropertyMap = ({
   useEffect(() => {
     const fetchToken = async () => {
       try {
+        setIsLoading(true);
+        setError(null);
+        
         const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-mapbox-token`, {
           headers: {
             'Content-Type': 'application/json',
@@ -65,22 +69,48 @@ const PropertyMap = ({
         });
         
         if (!response.ok) {
-          console.error('Failed to fetch Mapbox token');
+          const errorData = await response.json().catch(() => ({}));
+          if (response.status === 401 || response.status === 403) {
+            setError('Không có quyền truy cập dịch vụ bản đồ. Vui lòng đăng nhập lại.');
+          } else if (response.status === 500) {
+            setError('Chưa cấu hình token Mapbox trên server. Vui lòng liên hệ quản trị viên.');
+          } else {
+            setError('Không thể tải dịch vụ bản đồ. Vui lòng thử lại sau.');
+          }
           setIsLoading(false);
           return;
         }
         
         const data = await response.json();
+        if (!data.token) {
+          setError('Không thể lấy token bản đồ. Vui lòng thử lại.');
+          setIsLoading(false);
+          return;
+        }
+        
         setMapboxToken(data.token);
+        setError(null);
         setIsLoading(false);
       } catch (error) {
         console.error('Error fetching Mapbox token:', error);
+        if (error instanceof TypeError && error.message.includes('fetch')) {
+          setError('Không có kết nối mạng. Vui lòng kiểm tra kết nối internet của bạn.');
+        } else {
+          setError('Đã xảy ra lỗi khi tải bản đồ. Vui lòng thử lại.');
+        }
         setIsLoading(false);
       }
     };
     
     fetchToken();
   }, []);
+
+  const handleRetry = () => {
+    setIsLoading(true);
+    setError(null);
+    // Trigger refetch by updating a dependency
+    window.location.reload();
+  };
 
   // Initialize map
   useEffect(() => {
@@ -184,6 +214,28 @@ const PropertyMap = ({
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
           <p className="text-muted-foreground">Đang tải bản đồ...</p>
+        </div>
+      </Card>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card className="w-full h-[600px] flex items-center justify-center">
+        <div className="text-center p-6 max-w-md">
+          <div className="bg-destructive/10 rounded-full h-16 w-16 flex items-center justify-center mx-auto mb-4">
+            <MapPin className="h-8 w-8 text-destructive" />
+          </div>
+          <h3 className="text-lg font-semibold mb-2">Không thể tải bản đồ</h3>
+          <p className="text-muted-foreground text-sm mb-6">
+            {error}
+          </p>
+          <button
+            onClick={handleRetry}
+            className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+          >
+            Thử lại
+          </button>
         </div>
       </Card>
     );
