@@ -1,9 +1,21 @@
 import { useEffect, useRef, useState } from 'react';
-import mapboxgl from 'mapbox-gl';
-import 'mapbox-gl/dist/mapbox-gl.css';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import { Card } from '@/components/ui/card';
 import { formatPrice, translatePropertyType } from '@/utils/propertyHelpers';
 import { MapPin } from 'lucide-react';
+
+// Fix default marker icon issue with Leaflet
+import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
+import markerIcon from 'leaflet/dist/images/marker-icon.png';
+import markerShadow from 'leaflet/dist/images/marker-shadow.png';
+
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconUrl: markerIcon,
+  iconRetinaUrl: markerIcon2x,
+  shadowUrl: markerShadow,
+});
 
 interface Property {
   id: string;
@@ -26,28 +38,26 @@ interface PropertyMapProps {
 
 const PropertyMap = ({ 
   properties, 
-  center = [105.8342, 21.0278], // Hanoi center
+  center = [21.0278, 105.8342], // Hanoi center [lat, lng]
   zoom = 11,
   onMarkerClick 
 }: PropertyMapProps) => {
   const mapContainer = useRef<HTMLDivElement>(null);
-  const map = useRef<mapboxgl.Map | null>(null);
-  const [mapboxToken, setMapboxToken] = useState<string>('');
+  const map = useRef<L.Map | null>(null);
+  const markers = useRef<L.Marker[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Geocoding function to convert location to coordinates
+  // Geocoding function using Nominatim (OpenStreetMap)
   const geocodeLocation = async (location: string): Promise<[number, number] | null> => {
-    if (!mapboxToken) return null;
-    
     try {
       const response = await fetch(
-        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(location + ', Vietnam')}.json?access_token=${mapboxToken}&limit=1`
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(location + ', Vietnam')}&limit=1`
       );
       const data = await response.json();
       
-      if (data.features && data.features.length > 0) {
-        return data.features[0].center as [number, number];
+      if (data && data.length > 0) {
+        return [parseFloat(data[0].lat), parseFloat(data[0].lon)];
       }
     } catch (error) {
       console.error('Geocoding error:', error);
@@ -55,158 +65,112 @@ const PropertyMap = ({
     return null;
   };
 
-  // Fetch Mapbox token from edge function
-  useEffect(() => {
-    const fetchToken = async () => {
-      try {
-        setIsLoading(true);
-        setError(null);
-        
-        const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-mapbox-token`, {
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        });
-        
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          if (response.status === 401 || response.status === 403) {
-            setError('Không có quyền truy cập dịch vụ bản đồ. Vui lòng đăng nhập lại.');
-          } else if (response.status === 500) {
-            setError('Chưa cấu hình token Mapbox trên server. Vui lòng liên hệ quản trị viên.');
-          } else {
-            setError('Không thể tải dịch vụ bản đồ. Vui lòng thử lại sau.');
-          }
-          setIsLoading(false);
-          return;
-        }
-        
-        const data = await response.json();
-        if (!data.token) {
-          setError('Không thể lấy token bản đồ. Vui lòng thử lại.');
-          setIsLoading(false);
-          return;
-        }
-        
-        setMapboxToken(data.token);
-        setError(null);
-        setIsLoading(false);
-      } catch (error) {
-        console.error('Error fetching Mapbox token:', error);
-        if (error instanceof TypeError && error.message.includes('fetch')) {
-          setError('Không có kết nối mạng. Vui lòng kiểm tra kết nối internet của bạn.');
-        } else {
-          setError('Đã xảy ra lỗi khi tải bản đồ. Vui lòng thử lại.');
-        }
-        setIsLoading(false);
-      }
-    };
-    
-    fetchToken();
-  }, []);
-
-  const handleRetry = () => {
-    setIsLoading(true);
-    setError(null);
-    // Trigger refetch by updating a dependency
-    window.location.reload();
-  };
-
   // Initialize map
   useEffect(() => {
-    if (!mapContainer.current || !mapboxToken) return;
+    if (!mapContainer.current) return;
 
-    mapboxgl.accessToken = mapboxToken;
-    
-    map.current = new mapboxgl.Map({
-      container: mapContainer.current,
-      style: 'mapbox://styles/mapbox/streets-v12',
-      center: center,
-      zoom: zoom,
-    });
+    try {
+      setIsLoading(true);
+      setError(null);
 
-    map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
-    map.current.scrollZoom.enable();
+      // Create map
+      map.current = L.map(mapContainer.current).setView(center, zoom);
+
+      // Add OpenStreetMap tiles
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        maxZoom: 19,
+      }).addTo(map.current);
+
+      setIsLoading(false);
+    } catch (err) {
+      console.error('Map initialization error:', err);
+      setError('Không thể khởi tạo bản đồ. Vui lòng thử lại.');
+      setIsLoading(false);
+    }
 
     return () => {
-      map.current?.remove();
+      if (map.current) {
+        map.current.remove();
+        map.current = null;
+      }
     };
-  }, [mapboxToken, center, zoom]);
+  }, [center, zoom]);
 
   // Add markers for properties
   useEffect(() => {
-    if (!map.current || !mapboxToken || properties.length === 0) return;
+    if (!map.current || properties.length === 0) return;
 
-    const bounds = new mapboxgl.LngLatBounds();
+    // Clear existing markers
+    markers.current.forEach(marker => marker.remove());
+    markers.current = [];
+
+    const bounds = L.latLngBounds([]);
     let markersAdded = 0;
 
+    // Add markers for each property
     properties.forEach(async (property) => {
       const coords = await geocodeLocation(property.location);
       
-      if (coords) {
-        // Create custom marker element
-        const el = document.createElement('div');
-        el.className = 'custom-marker';
-        el.style.cssText = `
-          background-color: hsl(var(--primary));
-          width: 40px;
-          height: 40px;
-          border-radius: 50%;
-          cursor: pointer;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          border: 3px solid white;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-          transition: transform 0.2s;
-        `;
-        el.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path><circle cx="12" cy="10" r="3"></circle></svg>`;
-
-        el.addEventListener('mouseenter', () => {
-          el.style.transform = 'scale(1.1)';
+      if (coords && map.current) {
+        // Create custom icon
+        const customIcon = L.divIcon({
+          className: 'custom-marker',
+          html: `
+            <div style="
+              background-color: hsl(var(--primary));
+              width: 40px;
+              height: 40px;
+              border-radius: 50%;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              border: 3px solid white;
+              box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+              cursor: pointer;
+            ">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path>
+                <circle cx="12" cy="10" r="3"></circle>
+              </svg>
+            </div>
+          `,
+          iconSize: [40, 40],
+          iconAnchor: [20, 40],
         });
-        el.addEventListener('mouseleave', () => {
-          el.style.transform = 'scale(1)';
-        });
 
-        // Create popup
+        // Create popup content
         const popupContent = `
-          <div class="p-2" style="min-width: 200px;">
-            <h3 class="font-bold text-sm mb-1">${property.title}</h3>
-            <p class="text-xs text-muted-foreground mb-1">${property.location}</p>
-            <p class="font-bold text-primary">${formatPrice(property.price)}</p>
-            <p class="text-xs mt-1">${translatePropertyType(property.property_type)} • ${property.area}m²</p>
-            ${property.bedrooms ? `<p class="text-xs">${property.bedrooms} PN • ${property.bathrooms} PT</p>` : ''}
+          <div style="min-width: 200px; padding: 8px;">
+            <h3 style="font-weight: bold; font-size: 14px; margin-bottom: 4px;">${property.title}</h3>
+            <p style="font-size: 12px; color: #666; margin-bottom: 4px;">${property.location}</p>
+            <p style="font-weight: bold; color: hsl(var(--primary)); margin-bottom: 4px;">${formatPrice(property.price)}</p>
+            <p style="font-size: 12px; margin-top: 4px;">${translatePropertyType(property.property_type)} • ${property.area}m²</p>
+            ${property.bedrooms ? `<p style="font-size: 12px;">${property.bedrooms} PN • ${property.bathrooms} PT</p>` : ''}
           </div>
         `;
 
-        const popup = new mapboxgl.Popup({ offset: 25 })
-          .setHTML(popupContent);
+        const marker = L.marker(coords, { icon: customIcon })
+          .addTo(map.current)
+          .bindPopup(popupContent);
 
-        const marker = new mapboxgl.Marker(el)
-          .setLngLat(coords)
-          .setPopup(popup)
-          .addTo(map.current!);
-
-        el.addEventListener('click', () => {
+        marker.on('click', () => {
           if (onMarkerClick) {
             onMarkerClick(property);
           }
         });
 
+        markers.current.push(marker);
         bounds.extend(coords);
         markersAdded++;
 
         // Fit bounds after all markers are added
         if (markersAdded === properties.length && markersAdded > 1) {
-          map.current?.fitBounds(bounds, {
-            padding: 50,
-            maxZoom: 14
-          });
+          map.current?.fitBounds(bounds, { padding: [50, 50] });
         }
       }
     });
-  }, [properties, mapboxToken, onMarkerClick]);
+  }, [properties, onMarkerClick]);
 
   if (isLoading) {
     return (
@@ -231,34 +195,11 @@ const PropertyMap = ({
             {error}
           </p>
           <button
-            onClick={handleRetry}
+            onClick={() => window.location.reload()}
             className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
           >
             Thử lại
           </button>
-        </div>
-      </Card>
-    );
-  }
-
-  if (!mapboxToken) {
-    return (
-      <Card className="w-full h-[600px] flex items-center justify-center">
-        <div className="text-center p-6">
-          <MapPin className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-          <h3 className="text-lg font-semibold mb-2">Chưa cấu hình Mapbox</h3>
-          <p className="text-muted-foreground text-sm max-w-md">
-            Vui lòng thêm MAPBOX_PUBLIC_TOKEN vào biến môi trường để hiển thị bản đồ.
-            Bạn có thể lấy token miễn phí tại{' '}
-            <a 
-              href="https://www.mapbox.com/" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="text-primary hover:underline"
-            >
-              mapbox.com
-            </a>
-          </p>
         </div>
       </Card>
     );

@@ -8,6 +8,3 @@ verify_jwt = true
 
 [functions.ai-property-assistant]
 verify_jwt = true
-
-[functions.get-mapbox-token]
-verify_jwt = false
