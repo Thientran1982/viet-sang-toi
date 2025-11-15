@@ -54,16 +54,39 @@ const PropertyMap = ({
     return null;
   };
 
+  // Fetch Mapbox token from edge function
+  useEffect(() => {
+    const fetchToken = async () => {
+      try {
+        const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-mapbox-token`, {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        if (!response.ok) {
+          console.error('Failed to fetch Mapbox token');
+          setIsLoading(false);
+          return;
+        }
+        
+        const data = await response.json();
+        setMapboxToken(data.token);
+        setIsLoading(false);
+      } catch (error) {
+        console.error('Error fetching Mapbox token:', error);
+        setIsLoading(false);
+      }
+    };
+    
+    fetchToken();
+  }, []);
+
   // Initialize map
   useEffect(() => {
-    // Get token from environment or use a placeholder
-    const token = import.meta.env.VITE_MAPBOX_PUBLIC_TOKEN || '';
-    setMapboxToken(token);
-    setIsLoading(false);
+    if (!mapContainer.current || !mapboxToken) return;
 
-    if (!mapContainer.current || !token) return;
-
-    mapboxgl.accessToken = token;
+    mapboxgl.accessToken = mapboxToken;
     
     map.current = new mapboxgl.Map({
       container: mapContainer.current,
