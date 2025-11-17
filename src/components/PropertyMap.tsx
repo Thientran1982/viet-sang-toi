@@ -65,14 +65,10 @@ const PropertyMap = ({
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 5000);
       
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(location + ', Vietnam')}&limit=1`,
-        {
-          headers: {
-            'User-Agent': 'PropertyApp/1.0'
-          },
-          signal: controller.signal
-        }
+      const query = encodeURIComponent(`${location}, Vietnam`);
+      let response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=jsonv2&q=${query}&limit=1`,
+        { signal: controller.signal }
       );
       
       clearTimeout(timeoutId);
@@ -81,7 +77,15 @@ const PropertyMap = ({
         throw new Error(`Geocoding failed: ${response.status}`);
       }
       
-      const data = await response.json();
+      let data = await response.json();
+      
+      if ((!data || data.length === 0) && location.includes(',')) {
+        // Fallback: try geocoding using only the city/province part
+        const city = location.split(',').slice(-1)[0].trim();
+        const q2 = encodeURIComponent(`${city}, Vietnam`);
+        response = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&q=${q2}&limit=1`, { signal: controller.signal });
+        data = await response.json();
+      }
       
       if (data && data.length > 0) {
         const coords: [number, number] = [parseFloat(data[0].lat), parseFloat(data[0].lon)];
