@@ -46,11 +46,11 @@ const PropertyMap = ({
   const map = useRef<L.Map | null>(null);
   const markers = useRef<L.Marker[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isGeocodingComplete, setIsGeocodingComplete] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [geocodedCount, setGeocodedCount] = useState(0);
   const geocodeCache = useRef<Map<string, [number, number] | null>>(new Map());
 
-  // Geocoding function with caching and rate limiting
+  // Geocoding function with caching, timeout and rate limiting
   const geocodeLocation = async (location: string): Promise<[number, number] | null> => {
     // Check cache first
     if (geocodeCache.current.has(location)) {
@@ -58,17 +58,24 @@ const PropertyMap = ({
     }
 
     try {
-      // Add delay to respect Nominatim rate limits (1 request per second)
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Add small delay to respect Nominatim rate limits
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      // Add timeout to prevent hanging
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
       
       const response = await fetch(
         `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(location + ', Vietnam')}&limit=1`,
         {
           headers: {
             'User-Agent': 'PropertyApp/1.0'
-          }
+          },
+          signal: controller.signal
         }
       );
+      
+      clearTimeout(timeoutId);
       
       if (!response.ok) {
         throw new Error(`Geocoding failed: ${response.status}`);
@@ -84,7 +91,7 @@ const PropertyMap = ({
       
       geocodeCache.current.set(location, null);
     } catch (error) {
-      console.error('Geocoding error:', error);
+      console.error('Geocoding error for', location, ':', error);
       geocodeCache.current.set(location, null);
     }
     return null;
@@ -122,15 +129,14 @@ const PropertyMap = ({
     };
   }, [center, zoom]);
 
-  // Add markers for properties with proper async handling
+  // Add markers for properties progressively
   useEffect(() => {
     if (!map.current || properties.length === 0) {
-      setIsGeocodingComplete(true);
       return;
     }
 
     let isMounted = true;
-    setIsGeocodingComplete(false);
+    setGeocodedCount(0);
 
     const addMarkers = async () => {
       // Clear existing markers
@@ -138,91 +144,80 @@ const PropertyMap = ({
       markers.current = [];
 
       const bounds = L.latLngBounds([]);
+      let processedCount = 0;
 
-      // Process properties in batches to avoid overwhelming the geocoding service
-      const batchSize = 5;
-      for (let i = 0; i < properties.length; i += batchSize) {
+      // Process properties one at a time to show progress
+      for (const property of properties) {
         if (!isMounted) break;
         
-        const batch = properties.slice(i, i + batchSize);
-        const results = await Promise.all(
-          batch.map(async (property) => ({
-            property,
-            coords: await geocodeLocation(property.location)
-          }))
-        );
+        const coords = await geocodeLocation(property.location);
+        processedCount++;
+        
+        if (isMounted) {
+          setGeocodedCount(processedCount);
+        }
 
-        // Add markers for this batch
-        results.forEach(({ property, coords }) => {
-          if (!coords || !map.current || !isMounted) return;
+        if (!coords || !map.current || !isMounted) continue;
 
-          // Create custom icon
-          const customIcon = L.divIcon({
-            className: 'custom-marker',
-            html: `
-              <div style="
-                background-color: hsl(var(--primary));
-                width: 40px;
-                height: 40px;
-                border-radius: 50%;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                border: 3px solid white;
-                box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-                cursor: pointer;
-              ">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path>
-                  <circle cx="12" cy="10" r="3"></circle>
-                </svg>
-              </div>
-            `,
-            iconSize: [40, 40],
-            iconAnchor: [20, 40],
-          });
-
-          // Create popup content
-          const popupContent = `
-            <div style="min-width: 200px; padding: 8px;">
-              <h3 style="font-weight: bold; font-size: 14px; margin-bottom: 4px;">${property.title}</h3>
-              <p style="font-size: 12px; color: #666; margin-bottom: 4px;">${property.location}</p>
-              <p style="font-weight: bold; color: hsl(var(--primary)); margin-bottom: 4px;">${formatPrice(property.price)}</p>
-              <p style="font-size: 12px; margin-top: 4px;">${translatePropertyType(property.property_type)} • ${property.area}m²</p>
-              ${property.bedrooms ? `<p style="font-size: 12px;">${property.bedrooms} PN • ${property.bathrooms} PT</p>` : ''}
+        // Create custom icon
+        const customIcon = L.divIcon({
+          className: 'custom-marker',
+          html: `
+            <div style="
+              background-color: hsl(var(--primary));
+              width: 40px;
+              height: 40px;
+              border-radius: 50%;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              border: 3px solid white;
+              box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+              cursor: pointer;
+            ">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path>
+                <circle cx="12" cy="10" r="3"></circle>
+              </svg>
             </div>
-          `;
-
-          const marker = L.marker(coords, { icon: customIcon })
-            .addTo(map.current)
-            .bindPopup(popupContent);
-
-          marker.on('click', () => {
-            if (onMarkerClick) {
-              onMarkerClick(property);
-            }
-          });
-
-          markers.current.push(marker);
-          bounds.extend(coords);
+          `,
+          iconSize: [40, 40],
+          iconAnchor: [20, 40],
         });
-      }
 
-      // Fit bounds after all markers are added
-      if (isMounted && markers.current.length > 1 && map.current) {
-        map.current.fitBounds(bounds, { padding: [50, 50] });
-      }
+        // Create popup content
+        const popupContent = `
+          <div style="min-width: 200px; padding: 8px;">
+            <h3 style="font-weight: bold; font-size: 14px; margin-bottom: 4px;">${property.title}</h3>
+            <p style="font-size: 12px; color: #666; margin-bottom: 4px;">${property.location}</p>
+            <p style="font-weight: bold; color: hsl(var(--primary)); margin-bottom: 4px;">${formatPrice(property.price)}</p>
+            <p style="font-size: 12px; margin-top: 4px;">${translatePropertyType(property.property_type)} • ${property.area}m²</p>
+            ${property.bedrooms ? `<p style="font-size: 12px;">${property.bedrooms} PN • ${property.bathrooms} PT</p>` : ''}
+          </div>
+        `;
 
-      if (isMounted) {
-        setIsGeocodingComplete(true);
+        const marker = L.marker(coords, { icon: customIcon })
+          .addTo(map.current)
+          .bindPopup(popupContent);
+
+        marker.on('click', () => {
+          if (onMarkerClick) {
+            onMarkerClick(property);
+          }
+        });
+
+        markers.current.push(marker);
+        bounds.extend(coords);
+
+        // Fit bounds after each marker to show progress
+        if (markers.current.length > 0 && map.current) {
+          map.current.fitBounds(bounds, { padding: [50, 50] });
+        }
       }
     };
 
     addMarkers().catch((error) => {
       console.error('Error adding markers:', error);
-      if (isMounted) {
-        setIsGeocodingComplete(true);
-      }
     });
 
     return () => {
@@ -230,19 +225,12 @@ const PropertyMap = ({
     };
   }, [properties, onMarkerClick]);
 
-  if (isLoading || !isGeocodingComplete) {
+  if (isLoading) {
     return (
       <Card className="w-full h-[600px] flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">
-            {isLoading ? 'Đang tải bản đồ...' : 'Đang xác định vị trí các bất động sản...'}
-          </p>
-          {!isLoading && !isGeocodingComplete && (
-            <p className="text-xs text-muted-foreground mt-2">
-              Điều này có thể mất vài giây
-            </p>
-          )}
+          <p className="text-muted-foreground">Đang tải bản đồ...</p>
         </div>
       </Card>
     );
@@ -271,8 +259,15 @@ const PropertyMap = ({
   }
 
   return (
-    <Card className="w-full h-[600px] overflow-hidden">
+    <Card className="w-full h-[600px] overflow-hidden relative">
       <div ref={mapContainer} className="w-full h-full" />
+      {geocodedCount > 0 && geocodedCount < properties.length && (
+        <div className="absolute bottom-4 right-4 bg-background/90 backdrop-blur-sm px-4 py-2 rounded-lg shadow-lg border">
+          <p className="text-sm text-muted-foreground">
+            Đang tải vị trí: {geocodedCount}/{properties.length}
+          </p>
+        </div>
+      )}
     </Card>
   );
 };
