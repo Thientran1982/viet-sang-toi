@@ -113,12 +113,26 @@ const PropertyMap = ({
       map.current = L.map(mapContainer.current).setView(center, zoom);
 
       // Add OpenStreetMap tiles
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      const tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
         maxZoom: 19,
+        crossOrigin: true as any,
       }).addTo(map.current);
 
-      setIsLoading(false);
+      // Wait for tiles to load before clearing loading state
+      tileLayer.on('load', () => {
+        setIsLoading(false);
+        // Ensure proper sizing when the container becomes visible
+        setTimeout(() => {
+          map.current?.invalidateSize();
+        }, 0);
+      });
+
+      tileLayer.on('tileerror', (err) => {
+        console.error('Tile load error:', err);
+        setError('Không thể tải bản đồ. Vui lòng kiểm tra kết nối mạng và thử lại.');
+        setIsLoading(false);
+      });
     } catch (err) {
       console.error('Map initialization error:', err);
       setError('Không thể khởi tạo bản đồ. Vui lòng thử lại.');
@@ -132,6 +146,24 @@ const PropertyMap = ({
       }
     };
   }, [center, zoom]);
+
+  // Ensure map resizes correctly when container size changes or view toggles
+  useEffect(() => {
+    if (isLoading || !map.current || !mapContainer.current) return;
+
+    // Initial invalidate after mount/toggle
+    map.current.invalidateSize();
+
+    const ro = new ResizeObserver(() => {
+      map.current?.invalidateSize();
+    });
+    ro.observe(mapContainer.current);
+
+    // Cleanup
+    return () => {
+      ro.disconnect();
+    };
+  }, [isLoading]);
 
   // Add markers for properties progressively
   useEffect(() => {
