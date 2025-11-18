@@ -112,27 +112,57 @@ const PropertyMap = ({
       // Create map
       map.current = L.map(mapContainer.current).setView(center, zoom);
 
-      // Add OpenStreetMap tiles
-      const tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-        maxZoom: 19,
-        crossOrigin: true as any,
-      }).addTo(map.current);
+      // Add OpenStreetMap tiles with fallback provider and robust events
+      let activeLayer: L.TileLayer | null = null;
 
-      // Wait for tiles to load before clearing loading state
-      tileLayer.on('load', () => {
-        setIsLoading(false);
-        // Ensure proper sizing when the container becomes visible
+      const createOSMLayer = () =>
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+          maxZoom: 19,
+          crossOrigin: true as any,
+        });
+
+      const createCartoLayer = () =>
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+          attribution:
+            '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+          maxZoom: 19,
+          crossOrigin: true as any,
+        });
+
+      const attachHandlers = (layer: L.TileLayer) => {
+        let loaded = false;
+        let errorCount = 0;
+
+        const finish = () => {
+          if (loaded) return;
+          loaded = true;
+          setIsLoading(false);
+          setTimeout(() => {
+            map.current?.invalidateSize();
+          }, 0);
+        };
+
+        layer.on('load', finish);
+        layer.on('tileerror', () => {
+          errorCount++;
+          // If early tiles fail, switch to fallback provider
+          if (errorCount > 2 && map.current) {
+            map.current.removeLayer(layer);
+            activeLayer = createCartoLayer().addTo(map.current);
+            attachHandlers(activeLayer);
+          }
+        });
+
+        // Safety timeout to avoid infinite loading state
         setTimeout(() => {
-          map.current?.invalidateSize();
-        }, 0);
-      });
+          if (!loaded) finish();
+        }, 4000);
+      };
 
-      tileLayer.on('tileerror', (err) => {
-        console.error('Tile load error:', err);
-        setError('Không thể tải bản đồ. Vui lòng kiểm tra kết nối mạng và thử lại.');
-        setIsLoading(false);
-      });
+      // Mount base layer and handlers
+      activeLayer = createOSMLayer().addTo(map.current);
+      attachHandlers(activeLayer);
     } catch (err) {
       console.error('Map initialization error:', err);
       setError('Không thể khởi tạo bản đồ. Vui lòng thử lại.');
