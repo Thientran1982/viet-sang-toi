@@ -163,6 +163,12 @@ const PropertyMap = ({
       // Mount base layer and handlers
       activeLayer = createOSMLayer().addTo(map.current);
       attachHandlers(activeLayer);
+
+      // Show map immediately to avoid spinner loops regardless of tile events
+      setIsLoading(false);
+      setTimeout(() => {
+        map.current?.invalidateSize();
+      }, 0);
     } catch (err) {
       console.error('Map initialization error:', err);
       setError('Không thể khởi tạo bản đồ. Vui lòng thử lại.');
