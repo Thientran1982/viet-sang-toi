@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { PropertyCard } from "@/components/PropertyCard";
-import PropertyMap from "@/components/PropertyMap";
+import MapboxPropertyMap from "@/components/MapboxPropertyMap";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -364,7 +364,7 @@ const PropertyList = () => {
             </p>
           </div>
         ) : viewMode === "map" ? (
-          <PropertyMap 
+          <MapboxPropertyMap 
             properties={properties} 
             onMarkerClick={(property) => navigate(`/property/${property.id}`)}
           />
